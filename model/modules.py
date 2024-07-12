@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from typing import List, Tuple
 import math
 
 class LayerNorm(nn.Module):
@@ -19,79 +20,92 @@ class LayerNorm(nn.Module):
         return self.gamma * (x - mean) / torch.sqrt(var + self.eps) + self.beta
     
 class ScaledDotProductAttention(nn.Module):
+
+    """Scaled dot-product attention mechanism.
+    """
     def __init__(self, dropout_rate=0.):
         super(ScaledDotProductAttention, self).__init__()
         self.dropout = nn.Dropout(dropout_rate)
 
     def forward(self, Q, K, V):
-        d_k = K.size(-1)  # Dimension of the key vectors
+        d_k = K.size(-1)  # dimension of the keys
         
-        # Compute the scaled dot-product attention scores
-        scores = torch.matmul(Q, K.transpose(-2, -1)) / torch.sqrt(torch.tensor(d_k, dtype=torch.float32))
+        # scaled dot-product attention scores
+        scores = torch.matmul(Q, K.transpose(-2, -1)) / torch.sqrt(torch.tensor(d_k, dtype=torch.float32)) #maybe add small epsilon here
         
-        # Apply softmax to get the attention weights
-        attention = F.softmax(scores, dim=-1)
+        # softmax produces attention weights
+        attention_weights = F.softmax(scores, dim=-1)
         
-        # Apply dropout to the attention weights
-        attention = self.dropout(attention)
+        # dropout to the attention weights (maybe not necessary here?)
+        attention_weights = self.dropout(attention_weights)
         
-        # Compute the final output by multiplying the attention weights with the value matrix
-        outputs = torch.matmul(attention, V)
+        #  final output by multiplying the attention weights with the value matrix
+        outputs = torch.matmul(attention_weights, V)
         
-        return outputs, attention
+        return outputs, attention_weights
 
 
 
 class MultiHeadAttention(nn.Module):
+    """Multi-head attention module.
+    """
     def __init__(self, num_heads, d_model, dropout_rate=0.):
         super(MultiHeadAttention, self).__init__()
         self.num_heads = num_heads
         self.d_model = d_model
-        self.depth = d_model // num_heads
+        self.d_k = d_model // num_heads
 
         assert d_model % num_heads == 0, "d_model must be divisible by num_heads"
 
-        self.WQ = nn.Linear(d_model, d_model)
-        self.WK = nn.Linear(d_model, d_model)
-        self.WV = nn.Linear(d_model, d_model)
-        self.WO = nn.Linear(d_model, d_model)
+        # separate projections for each head
+        self.W_q = nn.ModuleList([nn.Linear(d_model, self.d_k) for _ in range(num_heads)])
+        self.W_k = nn.ModuleList([nn.Linear(d_model, self.d_k) for _ in range(num_heads)])
+        self.W_v = nn.ModuleList([nn.Linear(d_model, self.d_k) for _ in range(num_heads)])
+        
+        # output projection
+        self.W_o = nn.Linear(d_model, d_model)
         
         self.attention = ScaledDotProductAttention(dropout_rate)
 
-    def split_heads(self, x, batch_size):
-        # Split the last dimension into (num_heads, depth)
-        x = x.view(batch_size, -1, self.num_heads, self.depth)
-        # Transpose the result to (batch_size, num_heads, seq_length, depth)
-        return x.transpose(1, 2)
 
-    def forward(self, Q, K, V):
-        batch_size = Q.size(0)
+    def forward(self, Q: torch.Tensor, K: torch.Tensor, V: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
 
-        # Linear projections and split into heads
-        Q = self.split_heads(self.WQ(Q), batch_size)
-        K = self.split_heads(self.WK(K), batch_size)
-        V = self.split_heads(self.WV(V), batch_size)
+        
+        # erform linear projections and split into heads
+        Q_heads = [self.W_q[i](Q) for i in range(self.num_heads)]  #  [batch_size, seq_len, d_k]
+        K_heads = [self.W_k[i](K) for i in range(self.num_heads)]
+        V_heads = [self.W_v[i](V) for i in range(self.num_heads)]
 
-        # Scaled dot-product attention
-        scaled_attention, attention_weights = self.attention(Q, K, V)
+        # scaled dot product attention to each head
+        outputs = []
+        attentions = []
+        for Q_h, K_h, V_h in zip(Q_heads, K_heads, V_heads):
+            output, attention = self.attention(Q_h, K_h, V_h)
+            outputs.append(output) # [batch_size, seq_len, d_k]
+            attentions.append(attention) # [batch_size, seq_len, seq_len]
+        
+        # concat outputsfrom  heads
+        output = torch.cat(outputs, dim=-1)
+        
+        # output projection
+        output = self.W_o(output)
+        
 
-        # Transpose and concatenate heads
-        scaled_attention = scaled_attention.transpose(1, 2).contiguous()
-        scaled_attention = scaled_attention.view(batch_size, -1, self.d_model)
-
-        # Final linear projection
-        output = self.WO(scaled_attention)
-        return output, attention_weights
+        return output, attentions
     
 
 class PositionWiseFeedforward(nn.Module):
     def __init__(self, d_model, d_ff, dropout_rate=0.1):
         super(PositionWiseFeedforward, self).__init__()
+        
+        # Two linear transformations with a ReLU activation in between
         self.linear1 = nn.Linear(d_model, d_ff)
         self.relu = nn.ReLU()
         self.linear2 = nn.Linear(d_ff, d_model)
         self.dropout = nn.Dropout(dropout_rate)
         self.layer_norm = nn.LayerNorm(d_model)
+
+
 
     def forward(self, x):
         
