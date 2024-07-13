@@ -7,16 +7,19 @@ import math
 class LayerNorm(nn.Module):
     """Layer normalization module.
        https://arxiv.org/abs/1607.06450
-    """
-    def __init__(self, features, eps=1e-8):
-        super(LayerNorm, self).__init__()
-        self.gamma = nn.Parameter(torch.ones(features))
-        self.beta = nn.Parameter(torch.zeros(features))
-        self.eps = eps
 
-    def forward(self, x):
-        mean = x.mean(-1, keepdim=True)
-        var = x.var(-1, keepdim=True)
+       Type hints: should i use them everywhere?
+
+    """
+    def __init__(self, features: int, eps: float = 1e-8):
+        super(LayerNorm, self).__init__()
+        self.gamma: nn.Parameter = nn.Parameter(torch.ones(features))
+        self.beta: nn.Parameter = nn.Parameter(torch.zeros(features))
+        self.eps: float = eps
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        mean: torch.Tensor = x.mean(-1, keepdim=True)
+        var: torch.Tensor = x.var(-1, keepdim=True)
         return self.gamma * (x - mean) / torch.sqrt(var + self.eps) + self.beta
     
 class ScaledDotProductAttention(nn.Module):
@@ -95,49 +98,38 @@ class MultiHeadAttention(nn.Module):
     
 
 class PositionWiseFeedforward(nn.Module):
-    def __init__(self, d_model, d_ff, dropout_rate=0.1):
+    """Position-wise feedforward network.
+    """
+    def __init__(self, d_model: int, d_ff: int, dropout_rate: float = 0.1):
         super(PositionWiseFeedforward, self).__init__()
         
-        # Two linear transformations with a ReLU activation in between
-        self.linear1 = nn.Linear(d_model, d_ff)
-        self.relu = nn.ReLU()
-        self.linear2 = nn.Linear(d_ff, d_model)
-        self.dropout = nn.Dropout(dropout_rate)
+        self.feedforward = nn.Sequential(
+            nn.Linear(d_model, d_ff),
+            nn.ReLU(),
+            nn.Linear(d_ff, d_model),
+            nn.Dropout(dropout_rate) # is dropout needed here?
+        )
         self.layer_norm = nn.LayerNorm(d_model)
 
-
-
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # feedforward network and  residual connection
+        out = self.feedforward(x) + x
         
-        
-        # First linear layer
-        out = self.linear1(x)
-        
-        # ReLU activation
-        out = self.relu(out)
-        
-        # Second linear layer
-        out = self.linear2(out)
-        
-        # Adding residual connection
-        out += x
-        
-        # Layer normalization
+        #layer normalization
         out = self.layer_norm(out)
-
-        # Dropout
-        out = self.dropout(out)
         
         return out
 
 class PositionalEncoding(nn.Module):
-    def __init__(self, d_model, max_len=5000):
+    """Positional encoding module.
+    """
+    def __init__(self, d_model: int, max_len: int = 5000):
         super(PositionalEncoding, self).__init__()
         
         # Create a long enough P matrix
-        pe = torch.zeros(max_len, d_model)
-        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+        pe: torch.Tensor = torch.zeros(max_len, d_model)
+        position: torch.Tensor = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term: torch.Tensor = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
         
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
@@ -145,8 +137,7 @@ class PositionalEncoding(nn.Module):
         pe = pe.unsqueeze(0).transpose(0, 1)
         self.register_buffer('pe', pe)
     
-    def forward(self, x):
-        
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = x + self.pe[:x.size(0), :]
-
         return x
+
