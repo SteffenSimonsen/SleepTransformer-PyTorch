@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
-from modules import MultiHeadAttention, PositionWiseFeedforward, LayerNorm
+from modules import MultiHeadAttention, PositionWiseFeedforward, LayerNorm, PositionalEncoding, Attention
+from typing import Optional
 
 class TransformerEncoder(nn.Module):
     def __init__(self, d_model: int, num_heads: int, d_ff: int, dropout_rate: float = 0.1):
@@ -14,7 +15,7 @@ class TransformerEncoder(nn.Module):
 
         self.dropout = nn.Dropout(dropout_rate)
 
-    def forward(self, x: torch.Tensor, mask: torch.Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, mask: Optional[torch.Tensor] = None) -> torch.Tensor:
 
         
         mha_output, _ = self.multi_head_attention(x, x, x) # multi head attention with attention weights returned for vizualization
@@ -27,34 +28,64 @@ class TransformerEncoder(nn.Module):
 
         return x # optionally return attention weights for visualization
     
-    
-class EpochTransformer(nn.Module):
-    def __init__(self, d_model: int, num_heads: int, d_ff: int, num_layers: int, dropout_rate: float = 0.1):
-        super(EpochTransformer, self).__init__()
 
-        #stack multiple transformer encoder layers in to heap of num_layers
+class TransformerHeap(nn.Module):
+    def __init__(self, d_model: int, num_heads: int, d_ff: int, num_layers: int, dropout_rate: float = 0.1):
+        super(TransformerHeap, self).__init__()
+
+        self.positional_encoding = PositionalEncoding(d_model) # positional encoding
+
         self.layers = nn.ModuleList([
-            TransformerEncoder(d_model, num_heads, d_ff, dropout_rate)
+            TransformerEncoder(d_model, num_heads, d_ff, dropout_rate) #stack multiple transformer encoder layers into heap of num_layers
             for _ in range(num_layers)
         ])
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.positional_encoding(x)
         for layer in self.layers:
             x = layer(x)
         return x
+    
+    
+# class EpochTransformer(nn.Module):
+#     def __init__(self, d_model: int, num_heads: int, d_ff: int, num_layers: int, d_attention: int, dropout_rate: float = 0.1):
+#         super(EpochTransformer, self).__init__()
 
-class SequenceTransformer(nn.Module):
-    def __init__(self, d_model: int, num_heads: int, d_ff: int, num_layers: int, dropout_rate: float = 0.1):
-        super(SequenceTransformer, self).__init__()
+#         self.positional_encoding = PositionalEncoding(d_model) # positional encoding
+
+#         self.layers = nn.ModuleList([
+#             TransformerEncoder(d_model, num_heads, d_ff, dropout_rate) #stack multiple transformer encoder layers into heap of num_layers
+#             for _ in range(num_layers)
+#         ])
+
+#         self.attention = Attention(d_model, d_attention) # attention module (note that this is not the same as the multi-head attention module)
+
+#     def forward(self, x: torch.Tensor) -> torch.Tensor:
+
+#         x = self.positional_encoding(x)
+
+#         for layer in self.layers:
+#             x = layer(x)
+
+#         # x = self.attention(x, return_alphas=True) optionally return attention weights for visualization
+
+#         x = self.attention(x)
+
+#         return x
+
+# class SequenceTransformer(nn.Module):
+#     def __init__(self, d_model: int, num_heads: int, d_ff: int, num_layers: int, dropout_rate: float = 0.1):
+#         super(SequenceTransformer, self).__init__()
+
+#         self.positional_encoding = PositionalEncoding(d_model) # positional encoding
 
         
-        #stack multiple transformer encoder layers in to heap of num_layers
-        self.layers = nn.ModuleList([
-            TransformerEncoder(d_model, num_heads, d_ff, dropout_rate)
-            for _ in range(num_layers)
-        ])
+#         self.layers = nn.ModuleList([
+#             TransformerEncoder(d_model, num_heads, d_ff, dropout_rate) #stack multiple transformer encoder layers into heap of num_layers
+#             for _ in range(num_layers)
+#         ])
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        for layer in self.layers:
-            x = layer(x)
-        return x
+#     def forward(self, x: torch.Tensor) -> torch.Tensor:
+#         for layer in self.layers:
+#             x = layer(x)
+#         return x

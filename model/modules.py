@@ -141,3 +141,35 @@ class PositionalEncoding(nn.Module):
         x = x + self.pe[:x.size(0), :]
         return x
 
+
+class Attention(nn.Module):
+    def __init__(self, d_model, d_attention):
+        super(Attention, self).__init__()
+        self.d_model = d_model
+        self.d_attention = d_attention
+
+        self.W_a = nn.Linear(d_model, d_attention, bias=True) # equation 14: W_a and b_a
+        
+        self.a_e = nn.Parameter(torch.Tensor(d_attention)) # trainable vector a_e (epoch-level context vector)
+        
+        nn.init.uniform_(self.a_e, -0.1, 0.1) # a_e
+
+    def forward(self, x, return_alphas=False):
+        # x shape: (batch_size, seq_len, d_model)
+        
+        a_t = torch.tanh(self.W_a(x))  # equation 14: a_t = tanh(W_a x_t + b_a)
+        
+        scores = torch.matmul(a_t, self.a_e) #  attention scores
+        
+        alpha_t = F.softmax(scores, dim=1) # equation 13:  attention weights
+        
+        context_vector = torch.sum(x * alpha_t.unsqueeze(-1), dim=1) # equation 12: weighted sum
+        
+        # return context vector and attention weights (alphas)
+        # for visualization if return_alphas is True
+        if return_alphas:
+            return context_vector, alpha_t
+        else:
+            return context_vector
+
+    
