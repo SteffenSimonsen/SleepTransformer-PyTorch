@@ -11,17 +11,17 @@ class SleepTransformer(nn.Module):
         self.config = config
         
         self.epoch_transformer = TransformerHeap( # epoch-level transformer
-            d_model=config.epoch_d_model,
+            d_model=config.d_model,
             num_heads=config.epoch_num_heads,
             d_ff=config.epoch_d_ff,
             num_layers=config.epoch_num_layers,
             dropout_rate=config.dropout_rate
         )
         
-        self.epoch_attention = Attention(config.epoch_d_model, config.epoch_d_attention) # Attention module
+        self.epoch_attention = Attention(config.d_model, config.epoch_d_attention) # Attention module
         
         self.sequence_transformer = TransformerHeap( # sequence-level transformer
-            d_model=config.seq_d_model,
+            d_model=config.d_model,
             num_heads=config.seq_num_heads,
             d_ff=config.seq_d_ff,
             num_layers=config.seq_num_layers,
@@ -29,10 +29,10 @@ class SleepTransformer(nn.Module):
         )
         
         
-        self.fc1 = nn.Linear(config.seq_d_model, config.fc_hidden_size) 
+        self.fc1 = nn.Linear(config.d_model, config.fc_hidden_size) 
         self.fc2 = nn.Linear(config.fc_hidden_size, config.num_classes) 
 
-    def forward(self, x):
+    def forward(self, x, return_attention=False):
         
         batch_size, epoch_seq_len, frame_seq_len, ndim, nchannel = x.shape # x: (batch_size, epoch_seq_len, frame_seq_len, ndim, nchannel)
         
@@ -44,9 +44,14 @@ class SleepTransformer(nn.Module):
         #epoch transformer
         epoch_output = self.epoch_transformer(x) # epoch_output : (batch_size * epoch_seq_len, frame_seq_len, d_model)
         
-        
-        # attention mechanism
-        epoch_context = self.epoch_attention(epoch_output) # epoch_context : (batch_size * epoch_seq_len, d_model)
+    
+        # attention mechanism 
+        # Todo : implement return of attention weights throughout the model
+        # this is only for the epoch level context vector attention
+        if return_attention:
+            epoch_context, attention_weights = self.epoch_attention(epoch_output, return_alphas=True) # epoch_context : (batch_size * epoch_seq_len, d_model)
+        else:
+            epoch_context = self.epoch_attention(epoch_output)
        
         
         # reshape for sequence transformer
@@ -68,6 +73,7 @@ class SleepTransformer(nn.Module):
         
         
         return output
+    
     
     def count_parameters(self):
         """Count and print the number of parameters in each component and total."""

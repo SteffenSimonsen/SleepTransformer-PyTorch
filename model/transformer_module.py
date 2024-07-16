@@ -15,7 +15,7 @@ class TransformerEncoder(nn.Module):
 
         self.dropout = nn.Dropout(dropout_rate)
 
-    def forward(self, x: torch.Tensor, mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
 
         
         mha_output, _ = self.multi_head_attention(x, x, x) # multi head attention with attention weights returned for vizualization
