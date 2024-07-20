@@ -18,13 +18,15 @@ class SleepTransformerConfig:
 
         self.epoch_d_attention = 64
 
-       
         self.fc_hidden_size = 1024  
         
         self.num_classes = 5  
 
-        
         self.dropout_rate = 0.1  
+        
+        # return attention weights for visualization
+        
+        self.return_attention_weights = False
 
     def __str__(self):
         return "\n".join(f"{key}: {value}" for key, value in self.__dict__.items())

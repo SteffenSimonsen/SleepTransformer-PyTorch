@@ -71,7 +71,7 @@ class MultiHeadAttention(nn.Module):
         self.attention = ScaledDotProductAttention(dropout_rate)
 
 
-    def forward(self, Q: torch.Tensor, K: torch.Tensor, V: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
+    def forward(self, Q: torch.Tensor, K: torch.Tensor, V: torch.Tensor, return_attention: bool = False) -> Tuple[torch.Tensor, List[torch.Tensor]]:
 
         
         # erform linear projections and split into heads
@@ -93,8 +93,10 @@ class MultiHeadAttention(nn.Module):
         # output projection
         output = self.W_o(output)
         
-
-        return output, attentions
+        if return_attention:
+            return output, torch.stack(attentions)
+        else:
+            return output
     
 
 class PositionWiseFeedforward(nn.Module):

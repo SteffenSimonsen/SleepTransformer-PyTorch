@@ -15,10 +15,13 @@ class TransformerEncoder(nn.Module):
 
         self.dropout = nn.Dropout(dropout_rate)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, return_attention: bool = False) -> torch.Tensor:
 
+        if return_attention:
+            mha_output, attention = self.multi_head_attention(x, x, x, return_attention=True)# multi head attention with attention weights returned for vizualization
+        else:
+            mha_output = self.multi_head_attention(x, x, x)
         
-        mha_output, _ = self.multi_head_attention(x, x, x) # multi head attention with attention weights returned for vizualization
         x = x + self.dropout(mha_output) # residual connection and dropout
         x = self.layer_norm1(x) # layer normalization
 
@@ -26,7 +29,10 @@ class TransformerEncoder(nn.Module):
         x = x + self.dropout(ffn_output) # residual connection and dropout
         x = self.layer_norm2(x) # layer normalization
 
-        return x # optionally return attention weights for visualization
+        if return_attention:
+            return x, attention
+        else:   
+            return x  
     
 
 class TransformerHeap(nn.Module):
@@ -40,10 +46,16 @@ class TransformerHeap(nn.Module):
             for _ in range(num_layers)
         ])
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, return_attention: bool = False) -> torch.Tensor:
         x = self.positional_encoding(x)
-        for layer in self.layers:
-            x = layer(x)
+        for i, layer in enumerate(self.layers):
+            if return_attention and i == len(self.layers) - 1:  # Only for the last layer
+                x, attention_weights = layer(x, return_attention=True)
+            else:
+                x = layer(x)
+        
+        if return_attention:
+            return x, attention_weights
         return x
     
     
