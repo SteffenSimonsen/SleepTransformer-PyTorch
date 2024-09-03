@@ -31,7 +31,8 @@ class SleepTransformer(nn.Module):
         
         
         self.fc1 = nn.Linear(config.d_model, config.fc_hidden_size) 
-        self.fc2 = nn.Linear(config.fc_hidden_size, config.num_classes) 
+        self.fc2 = nn.Linear(config.fc_hidden_size, config.fc_hidden_size)
+        self.output = nn.Linear(config.fc_hidden_size, config.num_classes) 
 
     def forward(self, x, return_attention=False):
         
@@ -71,8 +72,10 @@ class SleepTransformer(nn.Module):
         
         #  FC layers
         x = F.relu(self.fc1(sequence_output)) # x : (batch_size, epoch_seq_len, fc_hidden_size)
+
+        x = F.relu(self.fc2(x)) # x : (batch_size, epoch_seq_len, fc_hidden_size)
         
-        logits = self.fc2(x) # logits : (batch_size, epoch_seq_len, num_classes)
+        logits = self.output(x) # logits : (batch_size, epoch_seq_len, num_classes)
         
         
         # softmax

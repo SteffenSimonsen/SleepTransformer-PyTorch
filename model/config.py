@@ -26,7 +26,7 @@ class SleepTransformerConfig:
         
         # return attention weights for visualization
         
-        self.return_attention_weights = False
+        self.return_attention_weights = True
 
     def __str__(self):
         return "\n".join(f"{key}: {value}" for key, value in self.__dict__.items())
