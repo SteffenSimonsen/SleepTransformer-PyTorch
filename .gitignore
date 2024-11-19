@@ -9,3 +9,50 @@ __pycache__/
 tests.py
 test.ipynb
 
+# tensorflow version
+TensorFlowVersion/
+
+# Data files
+*.hdf5
+*.h5
+*.mat
+*.npz
+*.npy
+splits/
+data/
+
+# Logs and checkpoints
+logs/
+lightning_logs/
+*.log
+checkpoints/
+*.ckpt
+**/runs/
+wandb/
+mlruns/
+tensorboard/
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+v/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb_checkpoints/
+
+# Local development configuration
+.env
+config.local.py
+
+# Model artifacts and outputs
+*.pt
+*.pth
+*.model
+saved_models/
+outputs/
+results/
