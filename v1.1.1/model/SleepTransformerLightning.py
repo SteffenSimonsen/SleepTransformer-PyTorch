@@ -19,7 +19,7 @@ class SleepTransformerLightning(pl.LightningModule):
         # model definition
         self.model = SleepTransformer(self.config)
 
-        self.model.count_parameters()
+        #self.model.count_parameters()
 
          # Save config as a hyperparameter
         self.save_hyperparameters({
@@ -85,10 +85,10 @@ class SleepTransformerLightning(pl.LightningModule):
         kappa = self.train_kappa(preds, true)
         
         # Log metrics
-        self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
-        self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True)
-        self.log('train_f1', f1, on_step=True, on_epoch=True, prog_bar=True)
-        self.log('train_kappa', kappa, on_step=True, on_epoch=True, prog_bar=True)
+        self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log('train_f1', f1, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log('train_kappa', kappa, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
         
         return loss
     
@@ -115,21 +115,21 @@ class SleepTransformerLightning(pl.LightningModule):
         kappa = self.val_kappa(preds, true)
         
         # Log metrics
-        self.log('val_loss', loss, on_epoch=True, prog_bar=True)
+        self.log('val_loss', loss, on_epoch=True, prog_bar=True, sync_dist=True)
         
         
         return loss
     
     def on_validation_epoch_end(self):
         # compute metrics at the end of validation epoch
-        self.log('val_acc', self.val_acc.compute(), prog_bar=True)
-        self.log('val_f1', self.val_f1.compute(), prog_bar=True) 
-        self.log('val_kappa', self.val_kappa.compute(), prog_bar=True)
+        self.log('val_acc', self.val_acc.compute(), prog_bar=True, sync_dist=True)
+        self.log('val_f1', self.val_f1.compute(), prog_bar=True,  sync_dist=True) 
+        self.log('val_kappa', self.val_kappa.compute(), prog_bar=True, sync_dist=True)
 
         # log learning rate
         if self.trainer is not None:
             current_lr = self.optimizers().param_groups[0]['lr']
-            self.log('learning_rate', current_lr)
+            self.log('learning_rate', current_lr, sync_dist=True)
 
 
     def test_step(self, batch):
@@ -174,9 +174,9 @@ class SleepTransformerLightning(pl.LightningModule):
         f1 = self.test_f1(preds, true)
         
         # Log batch metrics
-        self.log('test_loss', loss, on_epoch=True, prog_bar=True)
-        self.log('test_acc', acc, on_epoch=True, prog_bar=True)
-        self.log('test_f1', f1, on_epoch=True, prog_bar=True)
+        self.log('test_loss', loss, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log('test_acc', acc, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log('test_f1', f1, on_epoch=True, prog_bar=True, sync_dist=True)
 
         return loss
 
@@ -312,21 +312,6 @@ def setup_data():
     return train_dataloader, val_dataloader, test_dataloader
 
 
-def test_best_models(trainer, model, test_dataloader, checkpoint_callbacks):
-    """
-    Test the best models for each metric
-    """
-    results = {}
-    
-    for name, callback in checkpoint_callbacks.items():
-        print(f"\nTesting best {name} model:")
-        print(f"Model path: {callback.best_model_path}")
-        best_model = SleepTransformerLightning.load_from_checkpoint(callback.best_model_path)
-        test_results = trainer.test(best_model, test_dataloader)
-        results[name] = test_results[0]
-        
-    return results
-
 def train():
     model = SleepTransformerLightning()
     config = SleepTransformerConfig()
@@ -343,19 +328,20 @@ def train():
     trainer = pl.Trainer(
         max_epochs=config.max_epochs, #set number of epochs for training
         callbacks=[early_stopping] + list(checkpoint_callbacks.values()),
-        logger=logger
+        logger=logger,
+        #limit the number of training batches per epoch for virtual epochs
+        limit_train_batches=config.steps_per_epoch if config.use_virtual_epochs else 1.0,
+        #multi gpu settings
+        accelerator="gpu",
+        devices=1,
+        strategy="ddp"
     )
     
     trainer.fit(model, train_dataloader, val_dataloader)
     
-    # test best models
-    results = test_best_models(trainer, model, test_dataloader, checkpoint_callbacks)
-    
-    print("\nTest Results Summary:")
-    for metric_name, metric_results in results.items():
-        print(f"\nBest {metric_name} model performance:")
-        for metric, value in metric_results.items():
-            print(f"{metric}: {value:.4f}")
+    best_kappa_model_path = checkpoint_callbacks['kappa'].best_model_path
+    best_model = SleepTransformerLightning.load_from_checkpoint(best_kappa_model_path)
+    trainer.test(best_model, test_dataloader)
     
 
 if __name__ == "__main__":

@@ -77,9 +77,6 @@ class SleepDatasetSplit(Dataset):
 
             # stack along the last dimension
             data = torch.cat([eeg, eog], dim=-1)  # [21, 29, 129, 2]
-            
-            if self.transform:
-                data = self.transform(data)
         
             return data, labels
         else:

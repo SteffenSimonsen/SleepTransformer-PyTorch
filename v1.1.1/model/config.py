@@ -33,15 +33,19 @@ class SleepTransformerConfig:
 
         # training parameters
         self.max_epochs = 1
-        self.batch_size = 32
-        self.learning_rate = 1e-4
+        self.batch_size = 64
+        self.learning_rate = 1e-3
         self.optimizer_beta1 = 0.9
         self.optimizer_beta2 = 0.999
         self.optimizer_eps = 1e-7
+
+        self.use_virtual_epochs = True
+        self.steps_per_epoch = 883  # Number of training steps per virtual epoch
+        
         
         # learning rate scheduler parameters
         self.scheduler_patience = 40
-        self.scheduler_factor = 0.001
+        self.scheduler_factor = 0.5
         self.scheduler_min_lr = 1e-6
         self.scheduler_monitor = 'val_kappa'  # Metric to monitor for LR scheduling
 
