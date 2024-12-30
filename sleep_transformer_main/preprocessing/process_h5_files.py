@@ -53,7 +53,7 @@ def convert_and_inspect_hdf5(input_file):
                 session_out = subject_out.create_group(session_key)
                 total_sessions += 1
                 
-                # Save labels (hypnogram)
+                
                 labels = session['hypnogram'][:]
                 session_out.create_dataset('hypnogram', data=labels)
                 
@@ -62,12 +62,12 @@ def convert_and_inspect_hdf5(input_file):
                     channel = session['psg'][channel_key][:]
                     _, _, spectrograms = create_spectrogram_images(channel, 128)
                     
-                    # Save spectrograms
+                    
                     psg_out.create_dataset(channel_key, data=spectrograms)
                 
                 print(f"Processed: {subject_key}/{session_key}")
         
-        # Get structure and summary information
+        
         def visit_func(name, obj):
             item = get_hdf5_structure(name, obj)
             if item:
@@ -86,14 +86,14 @@ def convert_and_inspect_hdf5(input_file):
         
         f_out.visititems(visit_func)
         
-        # Get additional summary information
+        
         sample_subject = subjects[0]
         sample_session = list(f_out['data'][sample_subject].keys())[0]
         psg_channels = list(f_out['data'][sample_subject][sample_session]['psg'].keys())
         sample_channel = psg_channels[0]
         sample_shape = f_out['data'][sample_subject][sample_session]['psg'][sample_channel].shape
         
-        # Get unique labels
+        
         hypnogram = f_out['data'][sample_subject][sample_session]['hypnogram'][()]
         unique_labels = sorted([int(label) for label in np.unique(hypnogram)])
         
@@ -105,7 +105,7 @@ def convert_and_inspect_hdf5(input_file):
             "unique_labels": unique_labels
         }
     
-    # Save structure information to JSON
+    
     with open(json_file, 'w') as out_file:
         json.dump(structure, out_file, indent=2)
     

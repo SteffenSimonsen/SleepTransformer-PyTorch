@@ -3,6 +3,12 @@ class SleepTransformerConfig:
         """Configuration class for the Sleep Transformer model. 
         Mostly based on https://arxiv.org/abs/2105.11043"""
 
+        self.experiment_name = "testing"
+
+        self.data_path = '/home/steff/SleepTransformer/v2.0.0/data/'
+        
+        self.split_path = "/home/steff/SleepTransformer/v2.0.0/splits/abc_split.json"
+
         #spectrogram input frequency bins
         self.input_freq = 129 # 
 
@@ -23,13 +29,15 @@ class SleepTransformerConfig:
         self.seq_num_layers = 4  # N_S = 4 
 
         #various model parameters
-        self.epoch_d_attention = 64
+        self.epoch_d_attention = 1024
 
         self.fc_hidden_size = 1024  
         
         self.num_classes = 5  
 
         self.dropout_rate = 0.1  
+
+        self.norm_type = "LayerNorm"
 
         # training parameters
         self.max_epochs = 1
@@ -40,24 +48,16 @@ class SleepTransformerConfig:
         self.optimizer_eps = 1e-7
 
         self.use_virtual_epochs = True
-        self.steps_per_epoch = 883  # Number of training steps per virtual epoch
+        self.steps_per_epoch = self.batch_size * 883  # number of training steps per virtual epoch
         
         
         # learning rate scheduler parameters
         self.scheduler_patience = 40
         self.scheduler_factor = 0.5
         self.scheduler_min_lr = 1e-6
-        self.scheduler_monitor = 'val_kappa'  # Metric to monitor for LR scheduling
+        self.scheduler_monitor = 'validation_kappa'  
 
-        #metrics to monitor during training
-
-        self.monitor_metrics = {
-            'kappa': {'mode': 'max', 'metric': 'val_kappa'},
-            'f1': {'mode': 'max', 'metric': 'val_f1'},
-            'accuracy': {'mode': 'max', 'metric': 'val_acc'},
-            'loss': {'mode': 'min', 'metric': 'val_loss'}
-        }
-
+       
         # return attention weights for visualization
         
         self.return_attention_weights = False

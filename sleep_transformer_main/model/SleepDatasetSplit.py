@@ -1,12 +1,12 @@
 import torch
 from torch.utils.data import Dataset
 from split import Split
-from sampler import DeterministicSampler, RandomSampler, SamplerConfig, TestSampler
+from samplers import RandomSampler, DetermSampler
 import numpy as np
 import os
 
 class SleepDatasetSplit(Dataset):
-    def __init__(self, split_file=None, data_path=None, split_type="train", seq_length=21):
+    def __init__(self, split_file=None, data_path=None, split_type="train", seq_length=21, use_virtual_epochs=False, steps_per_epoch=883):
         self.seq_length = seq_length
         
         if split_file is not None:
@@ -18,39 +18,37 @@ class SleepDatasetSplit(Dataset):
         else:
             raise ValueError("Either split_file or data_path must be provided")
         
+        # configure samplers based on split type
         if split_type == "train":
-
-            config = SamplerConfig(
+            # random sampler for training
+            num_iterations = steps_per_epoch if use_virtual_epochs else 883
+            
+            self.sampler = RandomSampler(
                 split_data=self.split,
                 split_type=split_type,
-                seq_length=seq_length
+                num_epochs=seq_length,
+                num_iterations=num_iterations
             )
-
-            self.sampler = RandomSampler(config)
 
         elif split_type == "val":
-
-            config = SamplerConfig(
+            # deterministic sampler for validation
+            self.sampler = DetermSampler(
                 split_data=self.split,
                 split_type=split_type,
-                seq_length=seq_length
+                subject_percentage=1.0  
             )
-
-            self.sampler = DeterministicSampler(config)
 
         elif split_type == "test":
-
-            config = SamplerConfig(
+            # deterministic sampler for testing, getting all channels
+            self.sampler = DetermSampler(
                 split_data=self.split,
                 split_type=split_type,
-                seq_length=seq_length,
-                get_all_channels=True  # all channels for test set
+                subject_percentage=1.0,
+                get_all_channels=True  
             )
-
-            self.sampler = TestSampler(config)
-
         else:
             raise ValueError(f"Invalid split_type: {split_type}")
+
         
         self.is_test = split_type == "test"
     
@@ -59,6 +57,14 @@ class SleepDatasetSplit(Dataset):
 
     def __getitem__(self, idx):
         sample = self.sampler.get_sample(idx)
+
+        metadata = {
+        'dataset': sample.tag.dataset,
+        'subject': sample.tag.subject,
+        'record': sample.tag.record
+        }
+
+        
 
         eeg = np.array(sample.eeg)
         eog = np.array(sample.eog)
@@ -78,7 +84,7 @@ class SleepDatasetSplit(Dataset):
             # stack along the last dimension
             data = torch.cat([eeg, eog], dim=-1)  # [21, 29, 129, 2]
         
-            return data, labels
+            return data, labels, metadata
         else:
         
             # keep channels separate - no stacking
@@ -88,7 +94,7 @@ class SleepDatasetSplit(Dataset):
             eog = torch.as_tensor(sample.eog).float()  # [num_eog_channels, 21, 29, 129]
             labels = torch.as_tensor(sample.labels).long()
             
-            return (eeg, eog), labels
+            return (eeg, eog), labels, metadata
     
     def save_split(self, path, name):
         """Save the current split configuration to a JSON file"""

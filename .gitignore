@@ -31,6 +31,10 @@ checkpoints/
 wandb/
 mlruns/
 tensorboard/
+.neptune/
+experiments/
+metrics/
+v
 
 # IDE specific files
 .vscode/
@@ -46,8 +50,10 @@ v/
 *.ipynb_checkpoints/
 
 # Local development configuration
-.env
 config.local.py
+.env
+*.env
+.env.*
 
 # Model artifacts and outputs
 *.pt
@@ -56,3 +62,4 @@ config.local.py
 saved_models/
 outputs/
 results/
+

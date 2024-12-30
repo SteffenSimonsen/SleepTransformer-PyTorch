@@ -4,6 +4,21 @@ import torch.nn.functional as F
 from typing import List, Tuple
 import math
 
+class RMSNorm(nn.Module):
+    """Root Mean Square Layer Normalization
+    https://arxiv.org/abs/1910.07467 
+    Implements: y = (x / √RMS[x] + ε) * γ
+    """
+    def __init__(self, d_model: int, eps: float = 1e-8):
+        super().__init__()
+        self.gamma = nn.Parameter(torch.ones(d_model))
+        self.eps = eps
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        rms = torch.sqrt(torch.mean(torch.square(x), dim=-1, keepdim=True))
+        x_normed = x / (rms + self.eps)  
+        return self.gamma * x_normed
+
 class LayerNorm(nn.Module):
     """Layer normalization module.
        https://arxiv.org/abs/1607.06450

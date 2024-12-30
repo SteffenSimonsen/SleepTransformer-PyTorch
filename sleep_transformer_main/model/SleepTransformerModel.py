@@ -25,7 +25,8 @@ class SleepTransformer(nn.Module):
             num_heads=config.epoch_num_heads,
             d_ff=config.epoch_d_ff,
             num_layers=config.epoch_num_layers,
-            dropout_rate=config.dropout_rate
+            dropout_rate=config.dropout_rate,
+            norm_type=config.norm_type
         )
         
         self.epoch_attention = Attention(config.d_model, config.epoch_d_attention) # Attention module
@@ -35,13 +36,16 @@ class SleepTransformer(nn.Module):
             num_heads=config.seq_num_heads,
             d_ff=config.seq_d_ff,
             num_layers=config.seq_num_layers,
-            dropout_rate=config.dropout_rate
+            dropout_rate=config.dropout_rate,
+            norm_type=config.norm_type
         )
         
         
         self.fc1 = nn.Linear(config.d_model, config.fc_hidden_size) 
         self.fc2 = nn.Linear(config.fc_hidden_size, config.fc_hidden_size)
         self.output = nn.Linear(config.fc_hidden_size, config.num_classes) 
+
+        self.count_parameters()
 
     def forward(self, x, return_attention=False):
 
@@ -128,47 +132,3 @@ class SleepTransformer(nn.Module):
             total_params += params
         print(f"Total: {total_params:,} parameters")
         return total_params
-
-# Function to test the model
-def test_sleep_transformer():
-    class Config:
-        def __init__(self):
-            self.input_channels = 1
-            self.input_freq = 129
-            self.d_model = 128
-            self.epoch_num_heads = 8
-            self.epoch_d_ff = 1024
-            self.epoch_num_layers = 4
-            self.seq_num_heads = 8
-            self.seq_d_ff = 1024
-            self.seq_num_layers = 4
-            self.epoch_d_attention = 64
-            self.fc_hidden_size = 1024
-            self.num_classes = 5
-            self.dropout_rate = 0.1
-            self.return_attention_weights = False
-
-    config = Config()
-    model = SleepTransformer(config)
-
-    print(model)
-    model.count_parameters()
-    
-    # Create a sample input
-    batch_size, epoch_seq_len, frame_seq_len = 32, 21, 29
-    x = torch.randn(batch_size, epoch_seq_len, frame_seq_len, config.input_freq, config.input_channels)
-    
-    # Forward pass
-    output = model(x)
-
-
-    
-    print(f"Input shape: {x.shape}")
-    print(f"Output shape: {output.shape}")
-    print(f"Expected output shape: (batch_size, epoch_seq_len, num_classes) = ({batch_size}, {epoch_seq_len}, {config.num_classes})")
-    
-    assert output.shape == (batch_size, epoch_seq_len, config.num_classes), "Output shape mismatch!"
-    print("Model test passed successfully!")
-
-if __name__ == "__main__":
-    test_sleep_transformer()
