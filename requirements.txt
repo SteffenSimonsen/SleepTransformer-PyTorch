@@ -1,0 +1,11 @@
+torch
+pytorch-lightning
+numpy
+scipy
+h5py
+pandas
+scikit-learn
+torchmetrics
+matplotlib
+neptune-client
+python-dotenv
