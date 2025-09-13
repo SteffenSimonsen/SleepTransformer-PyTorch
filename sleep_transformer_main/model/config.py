@@ -5,9 +5,8 @@ class SleepTransformerConfig:
 
         self.experiment_name = "testing"
 
-        self.data_path = '/home/steff/SleepTransformer/v2.0.0/data/'
-        
-        self.split_path = "/home/steff/SleepTransformer/v2.0.0/splits/abc_split.json"
+        self.data_path = os.getenv('SLEEP_DATA_PATH', './data/')
+        self.split_path = os.getenv('SLEEP_SPLIT_PATH', './splits/abc_split.json')
 
         #spectrogram input frequency bins
         self.input_freq = 129 # 
